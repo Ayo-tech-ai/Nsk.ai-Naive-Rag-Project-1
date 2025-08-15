@@ -8,6 +8,7 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
 # --- Embeddings ---
+# Use langchain-huggingface package for embeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 
 # --- Vector Stores ---
@@ -61,29 +62,47 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Save uploaded file to a temporary location
-    temp_dir = "temp_uploads"
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_file_path = os.path.join(temp_dir, uploaded_file.name)
-    with open(temp_file_path, "wb") as f:
-        f.write(uploaded_file.read())
-
     # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
         from langchain.document_loaders import PyPDFLoader
-        loader = PyPDFLoader(temp_file_path)
+        loader = PyPDFLoader(uploaded_file)
     elif uploaded_file.name.endswith(".docx"):
         from langchain.document_loaders import UnstructuredWordDocumentLoader
-        loader = UnstructuredWordDocumentLoader(temp_file_path)
+        loader = UnstructuredWordDocumentLoader(uploaded_file)
     else:
         from langchain.document_loaders import TextLoader
-        loader = TextLoader(temp_file_path)
+        loader = TextLoader(uploaded_file)
     
     docs = loader.load()
     
-    # Create FAISS retriever for the document
-    st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
-    st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
+    # --- AGRICULTURE CHECK ---
+    full_text = " ".join([doc.page_content for doc in docs])
+    agri_keywords = [
+        # General agriculture
+        "agriculture", "farming", "farm", "cultivation", "crop", "harvest", "agro", "agronomy",
+        # Crops
+        "cassava", "maize", "corn", "rice", "wheat", "sorghum", "millet", "soybean", "tomato", "potato",
+        "cocoa", "coffee", "sugarcane", "vegetable", "fruit", "plantation", "horticulture", "orchard",
+        # Livestock & animal farming
+        "cattle", "goat", "sheep", "poultry", "chicken", "pig", "livestock", "dairy", "fishery", "aquaculture",
+        # Soil, water, and inputs
+        "soil", "fertilizer", "manure", "pesticide", "herbicide", "insecticide", "irrigation", "compost",
+        # Equipment & machinery
+        "tractor", "plow", "harvester", "sprayer", "farm equipment", "tillage", "mechanization",
+        # Agro-industry & related
+        "greenhouse", "seedling", "nursery", "agroforestry", "organic", "sustainable farming", "crop rotation",
+        # Pests & diseases
+        "blight", "fungus", "weevil", "pest", "disease", "infestation", "pathogen",
+        # Techniques & methods
+        "hydroponics", "permaculture", "mulching", "grafting", "fertigation", "soil conservation"
+    ]
+
+    if not any(keyword.lower() in full_text.lower() for keyword in agri_keywords):
+        st.warning("⚠️ This document does not seem to be related to agriculture. Please upload an agriculture-related document.")
+        st.session_state.retriever = None
+    else:
+        st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
+        st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
 # --- USER INPUT FORM ---
 with st.form("chat_form", clear_on_submit=True):
