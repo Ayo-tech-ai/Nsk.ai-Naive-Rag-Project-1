@@ -22,7 +22,7 @@ st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
 
 # --- TITLE / INTRO ---
 st.title("🌾 Naive RAG Chatbot")
-st.write("👋 Hello! Upload a document (PDF, Word, or TXT) related to agriculture and ask questions about it.")
+st.write("👋 Hello! Upload a document (PDF, Word, or TXT) and ask questions about it.")
 
 # --- API KEY (for Groq) ---
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
@@ -56,12 +56,16 @@ if "retriever" not in st.session_state:
 
 # --- AGRICULTURE KEYWORDS ---
 agric_keywords = [
-    "agriculture", "farm", "crop", "livestock", "soil", "irrigation",
-    "fertilizer", "pesticide", "harvest", "seed", "agronomy", "horticulture",
-    "planting", "germination", "yield", "agroforestry", "greenhouse", "poultry",
-    "dairy", "aquaculture", "organic farming", "sustainable farming", "farmer",
-    "plant disease", "machinery", "tractor", "compost", "orchard", "vineyard"
+    "agriculture", "farm", "farming", "crops", "harvest", "irrigation",
+    "fertilizer", "pesticide", "soil", "livestock", "dairy", "horticulture",
+    "plantation", "grain", "corn", "cassava", "yam", "rice", "wheat",
+    "greenhouse", "seedlings", "organic farming", "aquaculture",
+    "agroforestry", "agronomy", "poultry", "sheep", "goat", "tractor"
 ]
+
+# --- UPLOAD DIR ---
+UPLOAD_DIR = "uploaded_files"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # --- DOCUMENT UPLOAD ---
 uploaded_file = st.file_uploader(
@@ -70,16 +74,21 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
+    # Save uploaded file
+    file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.read())
+    
     # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
         from langchain.document_loaders import PyPDFLoader
-        loader = PyPDFLoader(uploaded_file)
+        loader = PyPDFLoader(file_path)
     elif uploaded_file.name.endswith(".docx"):
         from langchain.document_loaders import UnstructuredWordDocumentLoader
-        loader = UnstructuredWordDocumentLoader(uploaded_file)
+        loader = UnstructuredWordDocumentLoader(file_path)
     else:
         from langchain.document_loaders import TextLoader
-        loader = TextLoader(uploaded_file)
+        loader = TextLoader(file_path)
     
     docs = loader.load()
     
@@ -89,7 +98,7 @@ if uploaded_file is not None:
         st.warning("⚠️ This document does not appear to be related to agriculture. Please upload an agriculture-related document.")
         st.stop()
     
-    # Create FAISS retriever for the document
+    # Create FAISS retriever
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
@@ -97,35 +106,32 @@ if uploaded_file is not None:
 with st.form("chat_form", clear_on_submit=True):
     if st.session_state.retriever is None:
         st.text_input("💬 Ask a question:", disabled=True, placeholder="Please upload a document first.")
-        user_input = None
+        submitted = False
     else:
         user_input = st.text_input("💬 Ask a question:")
-
-    # Always include a submit button
-    submitted = st.form_submit_button("Send")
-
-    # Only run QA chain if retriever exists and user submitted a non-empty question
-    if submitted and user_input and user_input.strip() != "" and st.session_state.retriever is not None:
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=st.session_state.retriever,
-            chain_type_kwargs={"prompt": prompt}
-        )
-        
-        with st.spinner("Thinking..."):
-            answer = qa_chain.run(user_input)
-        
-        # Insert user input at the top
-        st.session_state.chat_history.insert(0, ("User", user_input))
-        
-        # First-time greeting
-        if not st.session_state.greeted:
-            greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
-            st.session_state.chat_history.insert(0, ("Bot", greeting))
-            st.session_state.greeted = True
-        
-        # Insert bot answer at the top
-        st.session_state.chat_history.insert(0, ("Bot", answer))
+        submitted = st.form_submit_button("Send")
+    
+        if submitted and user_input.strip() != "":
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=llm,
+                retriever=st.session_state.retriever,
+                chain_type_kwargs={"prompt": prompt}
+            )
+            
+            with st.spinner("Thinking..."):
+                answer = qa_chain.run(user_input)
+            
+            # Insert user input at the top
+            st.session_state.chat_history.insert(0, ("User", user_input))
+            
+            # First-time greeting
+            if not st.session_state.greeted:
+                greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
+                st.session_state.chat_history.insert(0, ("Bot", greeting))
+                st.session_state.greeted = True
+            
+            # Insert bot answer at the top
+            st.session_state.chat_history.insert(0, ("Bot", answer))
 
 # --- DISPLAY CHAT HISTORY (newest at top) ---
 for speaker, message in st.session_state.chat_history:
