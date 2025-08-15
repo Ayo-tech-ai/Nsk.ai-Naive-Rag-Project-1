@@ -1,6 +1,6 @@
 streamlit
 langchain-groq
-langchain-communities
+langchain-community
 langchain-huggingface
 sentence-transformers
 faiss-cpu
