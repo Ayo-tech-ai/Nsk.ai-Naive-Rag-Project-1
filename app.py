@@ -54,19 +54,6 @@ if "greeted" not in st.session_state:
 if "retriever" not in st.session_state:
     st.session_state.retriever = None
 
-# --- AGRICULTURE KEYWORDS ---
-agric_keywords = [
-    "agriculture", "farm", "farming", "crops", "harvest", "irrigation",
-    "fertilizer", "pesticide", "soil", "livestock", "dairy", "horticulture",
-    "plantation", "grain", "corn", "cassava", "yam", "rice", "wheat",
-    "greenhouse", "seedlings", "organic farming", "aquaculture",
-    "agroforestry", "agronomy", "poultry", "sheep", "goat", "tractor"
-]
-
-# --- UPLOAD DIR ---
-UPLOAD_DIR = "uploaded_files"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 # --- DOCUMENT UPLOAD ---
 uploaded_file = st.file_uploader(
     "Upload a document (PDF, DOCX, TXT):",
@@ -74,31 +61,27 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Save uploaded file
-    file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
-    with open(file_path, "wb") as f:
+    # Save uploaded file to a temporary location
+    temp_dir = "temp_uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_file_path = os.path.join(temp_dir, uploaded_file.name)
+    with open(temp_file_path, "wb") as f:
         f.write(uploaded_file.read())
-    
+
     # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
         from langchain.document_loaders import PyPDFLoader
-        loader = PyPDFLoader(file_path)
+        loader = PyPDFLoader(temp_file_path)
     elif uploaded_file.name.endswith(".docx"):
         from langchain.document_loaders import UnstructuredWordDocumentLoader
-        loader = UnstructuredWordDocumentLoader(file_path)
+        loader = UnstructuredWordDocumentLoader(temp_file_path)
     else:
         from langchain.document_loaders import TextLoader
-        loader = TextLoader(file_path)
+        loader = TextLoader(temp_file_path)
     
     docs = loader.load()
     
-    # --- AGRICULTURE CHECK ---
-    combined_text = " ".join([doc.page_content.lower() for doc in docs])
-    if not any(keyword.lower() in combined_text for keyword in agric_keywords):
-        st.warning("⚠️ This document does not appear to be related to agriculture. Please upload an agriculture-related document.")
-        st.stop()
-    
-    # Create FAISS retriever
+    # Create FAISS retriever for the document
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
