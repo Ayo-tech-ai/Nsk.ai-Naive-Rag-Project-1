@@ -8,7 +8,8 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
 # --- Embeddings ---
-from langchain.embeddings import HuggingFaceInstructEmbeddings  # leave as-is
+# Use langchain-huggingface package for embeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # --- Vector Stores ---
 from langchain_community.vectorstores import FAISS
@@ -29,7 +30,7 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 llm = ChatGroq(api_key=GROQ_API_KEY, model="llama-3.3-70b-versatile")
 
 # --- EMBEDDINGS ---
-embeddings = HuggingFaceInstructEmbeddings()  # leave as-is
+embeddings = HuggingFaceEmbeddings()
 
 # --- PROMPT TEMPLATE ---
 prompt_template = """
@@ -61,48 +62,53 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    file_type = uploaded_file.type
-    # Load document
+    # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
+        from langchain.document_loaders import PyPDFLoader
         loader = PyPDFLoader(uploaded_file)
     elif uploaded_file.name.endswith(".docx"):
+        from langchain.document_loaders import UnstructuredWordDocumentLoader
         loader = UnstructuredWordDocumentLoader(uploaded_file)
     else:
+        from langchain.document_loaders import TextLoader
         loader = TextLoader(uploaded_file)
     
     docs = loader.load()
     
+    # Create FAISS retriever for the document
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
-# --- USER INPUT FORM (fixed submit button) ---
+# --- USER INPUT FORM ---
 with st.form("chat_form", clear_on_submit=True):
     if st.session_state.retriever is None:
         st.text_input("💬 Ask a question:", disabled=True, placeholder="Please upload a document first.")
+        submitted = False
     else:
         user_input = st.text_input("💬 Ask a question:")
-
-    # Always include a submit button
-    submitted = st.form_submit_button("Send")
-
-    if submitted and st.session_state.retriever is not None and user_input.strip() != "":
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=st.session_state.retriever,
-            chain_type_kwargs={"prompt": prompt}
-        )
-        
-        with st.spinner("Thinking..."):
-            answer = qa_chain.run(user_input)
-        
-        st.session_state.chat_history.insert(0, ("User", user_input))
-        
-        if not st.session_state.greeted:
-            greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
-            st.session_state.chat_history.insert(0, ("Bot", greeting))
-            st.session_state.greeted = True
-        
-        st.session_state.chat_history.insert(0, ("Bot", answer))
+        submitted = st.form_submit_button("Send")
+    
+        if submitted and user_input.strip() != "":
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=llm,
+                retriever=st.session_state.retriever,
+                chain_type_kwargs={"prompt": prompt}
+            )
+            
+            with st.spinner("Thinking..."):
+                answer = qa_chain.run(user_input)
+            
+            # Insert user input at the top
+            st.session_state.chat_history.insert(0, ("User", user_input))
+            
+            # First-time greeting
+            if not st.session_state.greeted:
+                greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
+                st.session_state.chat_history.insert(0, ("Bot", greeting))
+                st.session_state.greeted = True
+            
+            # Insert bot answer at the top
+            st.session_state.chat_history.insert(0, ("Bot", answer))
 
 # --- DISPLAY CHAT HISTORY (newest at top) ---
 for speaker, message in st.session_state.chat_history:
