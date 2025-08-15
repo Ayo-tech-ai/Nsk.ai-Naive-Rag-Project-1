@@ -18,11 +18,11 @@ import pdfplumber
 import docx  # used by python-docx internally
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
+st.set_page_config(page_title="Ayo's Naive RAG Chatbot", page_icon="📑")
 
 # --- TITLE / INTRO ---
-st.title("🌾 Naive RAG Chatbot")
-st.write("👋 Hello! Upload a document (PDF, Word, or TXT) and ask questions about it.")
+st.title("Ayo's Naive RAG Chatbot")
+st.write("👋 Hello! Upload a PDF document and ask questions about it.")
 
 # --- API KEY (for Groq) ---
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
@@ -34,7 +34,7 @@ embeddings = HuggingFaceEmbeddings()
 # --- PROMPT TEMPLATE ---
 prompt_template = """
 Use the following pieces of context to answer the question.
-If you don’t know the answer from the context, say "I don't know."
+If you cannot find the answer from the context, say "I don't know."
 
 Context:
 {context}
@@ -113,7 +113,7 @@ with st.form("chat_form", clear_on_submit=True):
             
             # First-time greeting
             if not st.session_state.greeted:
-                greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
+                greeting = "👋 Hello! I’m your PDF Document Analyser bot. How can I help you today?"
                 st.session_state.chat_history.insert(0, ("Bot", greeting))
                 st.session_state.greeted = True
             
