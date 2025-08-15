@@ -8,15 +8,14 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
 # --- Embeddings ---
-# Updated import path for HuggingFace embeddings in latest LangChain
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings  # Updated import
 
 # --- Vector Stores ---
 from langchain_community.vectorstores import FAISS
 
-# --- Document parsing ---
-import pdfplumber
-import docx  # used by python-docx internally
+# --- Document loaders ---
+from langchain.document_loaders import PyPDFLoader, TextLoader, UnstructuredWordDocumentLoader
+
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
 
@@ -61,8 +60,7 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    file_type = uploaded_file.type
-    # Load document
+    # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
         loader = PyPDFLoader(uploaded_file)
     elif uploaded_file.name.endswith(".docx"):
@@ -72,9 +70,7 @@ if uploaded_file is not None:
     
     docs = loader.load()
     
-    # Optionally chunk documents
-    # Here we just keep full content, or implement chunking if needed
-    # For simplicity, we'll keep as one document
+    # Use FAISS retriever
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
