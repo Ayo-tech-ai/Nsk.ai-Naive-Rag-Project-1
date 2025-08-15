@@ -88,8 +88,12 @@ if uploaded_file is not None:
 # --- USER INPUT FORM ---
 with st.form("chat_form", clear_on_submit=True):
     if st.session_state.retriever is None:
-        st.text_input("💬 Ask a question:", disabled=True, placeholder="Please upload a document first.")
-        submitted = False
+        st.text_input(
+            "💬 Ask a question:",
+            disabled=True,
+            placeholder="Please upload a document first."
+        )
+        submitted = st.form_submit_button("Send")  # Always include submit button
     else:
         user_input = st.text_input("💬 Ask a question:")
         submitted = st.form_submit_button("Send")
