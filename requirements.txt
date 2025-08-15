@@ -6,7 +6,6 @@ transformers
 torch
 python-docx
 PyPDF2
-unstructured
+pdfplumber
 langchain-groq
 tiktoken
-pdfplumber
