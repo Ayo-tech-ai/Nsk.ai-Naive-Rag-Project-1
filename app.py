@@ -22,7 +22,7 @@ st.set_page_config(page_title="Ayo's Naive RAG Chatbot", page_icon="📑")
 
 # --- TITLE / INTRO ---
 st.title("Ayo's Naive RAG Chatbot")
-st.write("👋 Hello! Upload a PDF document and ask questions about it.")
+st.write("👋 Hello! Upload a PDF or WORD document and ask questions about it.")
 
 # --- API KEY (for Groq) ---
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
@@ -56,7 +56,7 @@ if "retriever" not in st.session_state:
 
 # --- DOCUMENT UPLOAD ---
 uploaded_file = st.file_uploader(
-    "Upload a document (PDF):",
+    "Upload a document (PDF and WORD):",
     type=["pdf", "docx", "txt"]
 )
 
