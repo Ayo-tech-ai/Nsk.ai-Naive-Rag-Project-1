@@ -2,35 +2,33 @@ import os
 import streamlit as st
 
 # --- LangChain LLM & Chains ---
-from langchain_groq import ChatGroq  # Groq API LLM wrapper
+from langchain_groq import ChatGroq
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
 # --- Embeddings ---
-# Use langchain-huggingface package for embeddings
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 
 # --- Vector Stores ---
 from langchain_community.vectorstores import FAISS
 
 # --- Document parsing ---
-import pdfplumber
-import docx  # used by python-docx internally
+from langchain.document_loaders import PyPDFLoader, TextLoader, UnstructuredWordDocumentLoader
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
 
 # --- TITLE / INTRO ---
 st.title("🌾 Naive RAG Chatbot")
-st.write("👋 Hello! Upload a document (PDF, Word, or TXT) and ask questions about it.")
+st.write("👋 Upload a document (PDF, Word, or TXT) and ask questions about it.")
 
-# --- API KEY (for Groq) ---
+# --- API KEY (Groq) ---
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 llm = ChatGroq(api_key=GROQ_API_KEY, model="llama-3.3-70b-versatile")
 
 # --- EMBEDDINGS ---
-embeddings = HuggingFaceEmbeddings()
+embeddings = HuggingFaceInstructEmbeddings()
 
 # --- PROMPT TEMPLATE ---
 prompt_template = """
@@ -62,55 +60,50 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
-        from langchain.document_loaders import PyPDFLoader
         loader = PyPDFLoader(uploaded_file)
     elif uploaded_file.name.endswith(".docx"):
-        from langchain.document_loaders import UnstructuredWordDocumentLoader
         loader = UnstructuredWordDocumentLoader(uploaded_file)
     else:
-        from langchain.document_loaders import TextLoader
         loader = TextLoader(uploaded_file)
     
     docs = loader.load()
-    
-    # Create FAISS retriever for the document
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
 # --- USER INPUT FORM ---
 with st.form("chat_form", clear_on_submit=True):
-    if st.session_state.retriever is None:
-        st.text_input("💬 Ask a question:", disabled=True, placeholder="Please upload a document first.")
-        submitted = False
-    else:
-        user_input = st.text_input("💬 Ask a question:")
-        submitted = st.form_submit_button("Send")
+    user_input = st.text_input(
+        "💬 Ask a question:",
+        disabled=(st.session_state.retriever is None),
+        placeholder="Please upload a document first." if st.session_state.retriever is None else ""
+    )
     
-        if submitted and user_input.strip() != "":
-            qa_chain = RetrievalQA.from_chain_type(
-                llm=llm,
-                retriever=st.session_state.retriever,
-                chain_type_kwargs={"prompt": prompt}
-            )
-            
-            with st.spinner("Thinking..."):
-                answer = qa_chain.run(user_input)
-            
-            # Insert user input at the top
-            st.session_state.chat_history.insert(0, ("User", user_input))
-            
-            # First-time greeting
-            if not st.session_state.greeted:
-                greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
-                st.session_state.chat_history.insert(0, ("Bot", greeting))
-                st.session_state.greeted = True
-            
-            # Insert bot answer at the top
-            st.session_state.chat_history.insert(0, ("Bot", answer))
+    submitted = st.form_submit_button("Send")
 
-# --- DISPLAY CHAT HISTORY (newest at top) ---
+    if submitted and user_input.strip() != "" and st.session_state.retriever is not None:
+        qa_chain = RetrievalQA.from_chain_type(
+            llm=llm,
+            retriever=st.session_state.retriever,
+            chain_type_kwargs={"prompt": prompt}
+        )
+        
+        with st.spinner("Thinking..."):
+            answer = qa_chain.run(user_input)
+        
+        # Insert user input at top
+        st.session_state.chat_history.insert(0, ("User", user_input))
+        
+        # First-time greeting
+        if not st.session_state.greeted:
+            greeting = "👋 Hello! I’m your Crop Advisor bot. How can I help you today?"
+            st.session_state.chat_history.insert(0, ("Bot", greeting))
+            st.session_state.greeted = True
+        
+        # Insert bot answer
+        st.session_state.chat_history.insert(0, ("Bot", answer))
+
+# --- DISPLAY CHAT HISTORY ---
 for speaker, message in st.session_state.chat_history:
     if speaker == "User":
         st.markdown(f"<div style='background-color:#D1E7DD;padding:8px;border-radius:8px;margin-bottom:5px'><b>User:</b> {message}</div>", unsafe_allow_html=True)
