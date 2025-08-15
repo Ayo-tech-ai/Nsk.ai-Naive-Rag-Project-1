@@ -8,13 +8,14 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
 # --- Embeddings ---
-from langchain.embeddings import HuggingFaceEmbeddings  # Updated import
+from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 # --- Vector Stores ---
 from langchain_community.vectorstores import FAISS
 
-# --- Document loaders ---
-from langchain.document_loaders import PyPDFLoader, TextLoader, UnstructuredWordDocumentLoader
+# --- Document parsing ---
+import pdfplumber
+import docx
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
@@ -28,7 +29,7 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 llm = ChatGroq(api_key=GROQ_API_KEY, model="llama-3.3-70b-versatile")
 
 # --- EMBEDDINGS ---
-embeddings = HuggingFaceEmbeddings()
+embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-base")
 
 # --- PROMPT TEMPLATE ---
 prompt_template = """
@@ -59,18 +60,24 @@ uploaded_file = st.file_uploader(
     type=["pdf", "docx", "txt"]
 )
 
+def load_document(file):
+    """Load PDF, DOCX, or TXT content into a LangChain Document list."""
+    docs = []
+    if file.name.endswith(".pdf"):
+        with pdfplumber.open(file) as pdf:
+            text = "\n".join([page.extract_text() or "" for page in pdf.pages])
+        docs.append(Document(page_content=text, metadata={"source": file.name}))
+    elif file.name.endswith(".docx"):
+        doc = docx.Document(file)
+        text = "\n".join([p.text for p in doc.paragraphs])
+        docs.append(Document(page_content=text, metadata={"source": file.name}))
+    else:  # txt
+        text = file.read().decode("utf-8")
+        docs.append(Document(page_content=text, metadata={"source": file.name}))
+    return docs
+
 if uploaded_file is not None:
-    # Load document based on type
-    if uploaded_file.name.endswith(".pdf"):
-        loader = PyPDFLoader(uploaded_file)
-    elif uploaded_file.name.endswith(".docx"):
-        loader = UnstructuredWordDocumentLoader(uploaded_file)
-    else:
-        loader = TextLoader(uploaded_file)
-    
-    docs = loader.load()
-    
-    # Use FAISS retriever
+    docs = load_document(uploaded_file)
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
