@@ -1,9 +1,10 @@
 streamlit
-langchain[embeddings]
+langchain
 faiss-cpu
 huggingface-hub
 transformers
 torch
+sentence-transformers
 python-docx
 PyPDF2
 unstructured
