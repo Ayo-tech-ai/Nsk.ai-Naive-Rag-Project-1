@@ -56,7 +56,7 @@ if "retriever" not in st.session_state:
 
 # --- DOCUMENT UPLOAD ---
 uploaded_file = st.file_uploader(
-    "Upload a document (PDF, DOCX, TXT):",
+    "Upload a document (PDF):",
     type=["pdf", "docx", "txt"]
 )
 
