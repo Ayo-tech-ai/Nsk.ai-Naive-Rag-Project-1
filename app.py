@@ -1,12 +1,22 @@
+import os
 import streamlit as st
-from langchain_groq import ChatGroq
+
+# --- LangChain LLM & Chains ---
+from langchain_groq import ChatGroq  # Groq API LLM wrapper
 from langchain.chains import RetrievalQA
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
-from langchain.document_loaders import PyPDFLoader, TextLoader, UnstructuredWordDocumentLoader
 
+# --- Embeddings ---
+# Updated import path for HuggingFace embeddings in latest LangChain
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+
+# --- Vector Stores ---
+from langchain_community.vectorstores import FAISS
+
+# --- Document parsing ---
+import pdfplumber
+import docx  # used by python-docx internally
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
 
