@@ -8,13 +8,15 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
 # --- Embeddings ---
-from langchain.embeddings import HuggingFaceEmbeddings
+# Use langchain-huggingface package for embeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # --- Vector Stores ---
 from langchain_community.vectorstores import FAISS
 
 # --- Document parsing ---
-from langchain.document_loaders import PyPDFLoader, TextLoader, UnstructuredWordDocumentLoader
+import pdfplumber
+import docx  # used by python-docx internally
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="🌾 Naive RAG Chatbot", page_icon="🌾")
@@ -28,7 +30,7 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 llm = ChatGroq(api_key=GROQ_API_KEY, model="llama-3.3-70b-versatile")
 
 # --- EMBEDDINGS ---
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embeddings = HuggingFaceEmbeddings()
 
 # --- PROMPT TEMPLATE ---
 prompt_template = """
@@ -62,15 +64,18 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
+        from langchain.document_loaders import PyPDFLoader
         loader = PyPDFLoader(uploaded_file)
     elif uploaded_file.name.endswith(".docx"):
+        from langchain.document_loaders import UnstructuredWordDocumentLoader
         loader = UnstructuredWordDocumentLoader(uploaded_file)
     else:
+        from langchain.document_loaders import TextLoader
         loader = TextLoader(uploaded_file)
     
     docs = loader.load()
     
-    # Create retriever
+    # Create FAISS retriever for the document
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
     st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
