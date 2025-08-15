@@ -1,0 +1,12 @@
+streamlit==1.29.0
+langchain==0.1.159
+faiss-cpu==1.7.4
+huggingface-hub==0.16.4
+transformers==4.35.0
+torch==2.1.0
+python-docx==0.8.11
+PyPDF2==3.1.0
+unstructured==0.7.8
+langchain-groq==0.0.6
+tiktoken==0.4.0
+pdfplumber==0.10.0
