@@ -1,11 +1,12 @@
 streamlit
-langchain
+langchain[embeddings]
 faiss-cpu
 huggingface-hub
 transformers
 torch
 python-docx
 PyPDF2
-pdfplumber
+unstructured
 langchain-groq
 tiktoken
+pdfplumber
