@@ -113,7 +113,7 @@ with st.form("chat_form", clear_on_submit=True):
             
             # First-time greeting
             if not st.session_state.greeted:
-                greeting = "👋 Hello! I’m your PDF Document Analyser bot. How can I help you today?"
+                greeting = "👋 Hello! I’m your Document Analyser bot. How can I help you today?"
                 st.session_state.chat_history.insert(0, ("Bot", greeting))
                 st.session_state.greeted = True
             
