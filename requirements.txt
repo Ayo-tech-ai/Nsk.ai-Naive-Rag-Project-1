@@ -7,3 +7,7 @@ faiss-cpu
 pdfplumber
 python-docx
 pypdf
+sentence-transformers
+transformers
+torch
+tiktoken
