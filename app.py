@@ -13,16 +13,12 @@ from langchain_huggingface import HuggingFaceEmbeddings
 # --- Vector Stores ---
 from langchain_community.vectorstores import FAISS
 
-# --- Document parsing ---
-import pdfplumber
-import docx  # used by python-docx internally
-
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Ayo's Naive RAG Chatbot", page_icon="📑")
 
 # --- TITLE / INTRO ---
 st.title("Ayo's Naive RAG Chatbot")
-st.write("👋 Hello! Upload a PDF or WORD document and ask questions about it.")
+st.write("👋 Hello! Upload a PDF, Word, or Text document and ask questions about it.")
 
 # --- API KEY (for Groq) ---
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
@@ -56,7 +52,7 @@ if "retriever" not in st.session_state:
 
 # --- DOCUMENT UPLOAD ---
 uploaded_file = st.file_uploader(
-    "Upload a document (PDF and WORD):",
+    "Upload a document (PDF, Word, or TXT):",
     type=["pdf", "docx", "txt"]
 )
 
@@ -70,20 +66,26 @@ if uploaded_file is not None:
 
     # Load document based on type
     if uploaded_file.name.endswith(".pdf"):
-        from langchain.document_loaders import PyPDFLoader
-        loader = PyPDFLoader(temp_file_path)
+        try:
+            from langchain_community.document_loaders import PyPDFLoader
+            loader = PyPDFLoader(temp_file_path)
+        except ImportError:
+            from langchain_community.document_loaders import PDFPlumberLoader
+            loader = PDFPlumberLoader(temp_file_path)
+
     elif uploaded_file.name.endswith(".docx"):
-        from langchain.document_loaders import UnstructuredWordDocumentLoader
-        loader = UnstructuredWordDocumentLoader(temp_file_path)
-    else:
-        from langchain.document_loaders import TextLoader
+        from langchain_community.document_loaders import Docx2txtLoader
+        loader = Docx2txtLoader(temp_file_path)
+
+    else:  # fallback for plain text
+        from langchain_community.document_loaders import TextLoader
         loader = TextLoader(temp_file_path)
     
     docs = loader.load()
     
     # Create FAISS retriever for the document
     st.session_state.retriever = FAISS.from_documents(docs, embeddings).as_retriever()
-    st.success(f"Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
+    st.success(f"✅ Document '{uploaded_file.name}' loaded successfully! You can now ask questions.")
 
 # --- USER INPUT FORM ---
 with st.form("chat_form", clear_on_submit=True):
@@ -123,6 +125,14 @@ with st.form("chat_form", clear_on_submit=True):
 # --- DISPLAY CHAT HISTORY (newest at top) ---
 for speaker, message in st.session_state.chat_history:
     if speaker == "User":
-        st.markdown(f"<div style='background-color:#D1E7DD;padding:8px;border-radius:8px;margin-bottom:5px'><b>User:</b> {message}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='background-color:#D1E7DD;padding:8px;border-radius:8px;margin-bottom:5px'>"
+            f"<b>User:</b> {message}</div>",
+            unsafe_allow_html=True
+        )
     else:
-        st.markdown(f"<div style='background-color:#F8D7DA;padding:8px;border-radius:8px;margin-bottom:5px'><b>Bot:</b> {message}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='background-color:#F8D7DA;padding:8px;border-radius:8px;margin-bottom:5px'>"
+            f"<b>Bot:</b> {message}</div>",
+            unsafe_allow_html=True
+                )
